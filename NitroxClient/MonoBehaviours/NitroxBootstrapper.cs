@@ -1,4 +1,5 @@
-﻿using NitroxClient.MonoBehaviours.Gui.MainMenu;
+﻿using System;
+using NitroxClient.MonoBehaviours.Gui.MainMenu;
 using NitroxModel.Logger;
 using UnityEngine;
 

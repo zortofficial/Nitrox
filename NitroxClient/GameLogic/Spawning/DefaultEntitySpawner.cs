@@ -1,9 +1,9 @@
-﻿using NitroxClient.GameLogic.Spawning.Metadata;
+﻿using System.Collections;
+using NitroxClient.GameLogic.Spawning.Metadata;
 using NitroxClient.MonoBehaviours;
 using NitroxModel.DataStructures.GameLogic;
 using NitroxModel.DataStructures.Util;
 using NitroxModel_Subnautica.DataStructures;
-using NitroxModel_Subnautica.Helper;
 using UnityEngine;
 using UWE;
 
@@ -11,11 +11,14 @@ namespace NitroxClient.GameLogic.Spawning
 {
     public class DefaultEntitySpawner : IEntitySpawner
     {
-        public Optional<GameObject> Spawn(Entity entity, Optional<GameObject> parent, EntityCell cellRoot)
+        public IEnumerator Spawn(TaskResult<Optional<GameObject>> result, Entity entity, Optional<GameObject> parent, EntityCell cellRoot)
         {
             TechType techType = entity.TechType.ToUnity();
 
-            GameObject gameObject = CreateGameObject(techType, entity.ClassId);
+            TaskResult<GameObject> gameObjectResult = new TaskResult<GameObject>();
+            yield return CreateGameObject(gameObjectResult, techType, entity.ClassId);
+
+            GameObject gameObject = gameObjectResult.Get();
             gameObject.transform.position = entity.Transform.Position.ToUnity();
             gameObject.transform.rotation = entity.Transform.Rotation.ToUnity();
             gameObject.transform.localScale = entity.Transform.LocalScale.ToUnity();
@@ -49,24 +52,31 @@ namespace NitroxClient.GameLogic.Spawning
                 metadataProcessor.Value.ProcessMetadata(gameObject, entity.Metadata);
             }
 
-            return Optional.Of(gameObject);
+            result.Set(Optional.Of(gameObject));
+            yield break;
         }
 
-        private GameObject CreateGameObject(TechType techType, string classId)
+        private IEnumerator CreateGameObject(TaskResult<GameObject> result, TechType techType, string classId)
         {
-            GameObject prefab;
             IPrefabRequest prefabRequest = PrefabDatabase.GetPrefabAsync(classId);
+            yield return prefabRequest;
+
+            GameObject prefab;
+
             if (!prefabRequest.TryGetPrefab(out prefab))
             {
-                prefab = CraftData.GetPrefabForTechType(techType, false);
+                CoroutineTask<GameObject> techPrefabCoroutine = CraftData.GetPrefabForTechTypeAsync(techType, false);
+                yield return techPrefabCoroutine;
+
+                prefab = techPrefabCoroutine.GetResult();
 
                 if (prefab == null)
                 {
-                    return Utils.CreateGenericLoot(techType);
+                    result.Set(Utils.CreateGenericLoot(techType));
                 }
             }
 
-            return Utils.SpawnFromPrefab(prefab, null);
+            result.Set(Utils.SpawnFromPrefab(prefab, null));
         }
 
         public bool SpawnsOwnChildren()

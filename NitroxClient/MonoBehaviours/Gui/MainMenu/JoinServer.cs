@@ -22,9 +22,7 @@ namespace NitroxClient.MonoBehaviours.Gui.MainMenu
 {
     public class JoinServer : MonoBehaviour
     {
-        private static readonly GameObject colorPickerPanelPrototype = Resources.Load<GameObject>("WorldEntities/Tools/RocketBase")
-            .RequireGameObject("Base/BuildTerminal/GUIScreen/CustomizeScreen/Panel/");
-
+        private GameObject colorPickerPanelPrototype;
         private PlayerPreference activePlayerPreference;
         private bool isSubscribed;
         private GameObject joinServerMenu;
@@ -46,6 +44,11 @@ namespace NitroxClient.MonoBehaviours.Gui.MainMenu
 
         public void Awake()
         {
+            GameObject rocketBase = Resources.Load<GameObject>("WorldEntities/Vehicles/RocketBase");
+            Validate.NotNull(rocketBase, "Need to locate base to create prototype color selector.");
+
+            colorPickerPanelPrototype = rocketBase.RequireGameObject("Base/BuildTerminal/GUIScreen/CustomizeScreen/Panel/");
+
             multiplayerSession = NitroxServiceLocator.LocateService<IMultiplayerSession>();
             preferencesManager = NitroxServiceLocator.LocateService<PlayerPreferenceManager>();
 
@@ -129,7 +132,7 @@ namespace NitroxClient.MonoBehaviours.Gui.MainMenu
             return joinServerMenu;
         }
 
-        private static GameObject CloneColorPickerPanelPrototype()
+        private GameObject CloneColorPickerPanelPrototype()
         {
             //Create a clone of the RocketBase color picker panel.
             GameObject playerSettingsPanel = Instantiate(colorPickerPanelPrototype);

@@ -11,6 +11,8 @@ using NitroxModel.DataStructures.GameLogic.Buildings.Rotation;
 using NitroxModel_Subnautica.DataStructures.GameLogic.Buildings.Rotation;
 using NitroxModel_Subnautica.DataStructures.GameLogic.Buildings.Rotation.Metadata;
 using NitroxModel_Subnautica.DataStructures;
+using System.Collections;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace NitroxClient.MonoBehaviours.Overrides
 {
@@ -166,7 +168,11 @@ namespace NitroxClient.MonoBehaviours.Overrides
 
                 MultiplayerBuilder.renderers = MaterialExtensions.AssignMaterial(MultiplayerBuilder.ghostModel, MultiplayerBuilder.ghostStructureMaterial);
                 MultiplayerBuilder.SetupRenderers(MultiplayerBuilder.ghostModel, Player.main.IsInSub());
-                MultiplayerBuilder.CreatePowerPreview(MultiplayerBuilder.constructableTechType, MultiplayerBuilder.ghostModel);
+                string poweredPrefabName = CraftData.GetPoweredPrefabName(MultiplayerBuilder.constructableTechType);
+                if (!string.IsNullOrEmpty(poweredPrefabName))
+                {
+                    CoroutineHost.StartCoroutine(MultiplayerBuilder.CreatePowerPreviewAsync(MultiplayerBuilder.ghostModel, poweredPrefabName));
+                }
                 MultiplayerBuilder.InitBounds(MultiplayerBuilder.prefab);
             }
 
@@ -963,22 +969,17 @@ namespace NitroxClient.MonoBehaviours.Overrides
         }
 
         // Token: 0x06002BB7 RID: 11191 RVA: 0x00104FDC File Offset: 0x001031DC
-        private static void CreatePowerPreview(TechType constructableTechType, GameObject ghostModel)
+        private static IEnumerator CreatePowerPreviewAsync(GameObject ghostModel, string poweredPrefabName)
         {
-            GameObject gameObject = null;
-            string poweredPrefabName = CraftData.GetPoweredPrefabName(constructableTechType);
-            if (poweredPrefabName != string.Empty)
+            AsyncOperationHandle<GameObject> asyncOperationHandle = AddressablesUtility.LoadAsync<GameObject>(poweredPrefabName);
+            yield return asyncOperationHandle;
+            GameObject result = asyncOperationHandle.Result;
+            if (result != null)
             {
-                gameObject = PrefabDatabase.GetPrefabForFilename(poweredPrefabName);
-            }
-
-            if (gameObject != null)
-            {
-                PowerRelay component = gameObject.GetComponent<PowerRelay>();
+                PowerRelay component = result.GetComponent<PowerRelay>();
                 if (component.powerFX != null && component.powerFX.attachPoint != null)
                 {
-                    PowerFX powerFX = ghostModel.AddComponent<PowerFX>();
-                    powerFX.attachPoint = new GameObject
+                    ghostModel.AddComponent<PowerFX>().attachPoint = new GameObject
                     {
                         transform =
                     {
@@ -987,15 +988,19 @@ namespace NitroxClient.MonoBehaviours.Overrides
                     }
                     }.transform;
                 }
-
                 PowerRelay powerRelay = ghostModel.AddComponent<PowerRelay>();
+                powerRelay.powerSystemPreviewPrefab = component.powerSystemPreviewPrefab;
                 powerRelay.maxOutboundDistance = component.maxOutboundDistance;
                 powerRelay.dontConnectToRelays = component.dontConnectToRelays;
                 if (component.internalPowerSource != null)
                 {
-                    powerRelay.internalPowerSource = ghostModel.AddComponent<PowerSource>();
+                    PowerSource powerSource = ghostModel.AddComponent<PowerSource>();
+                    powerSource.maxPower = 0f;
+                    powerRelay.internalPowerSource = powerSource;
                 }
             }
+            asyncOperationHandle.QueueRelease<GameObject>();
+            yield break;
         }
 
         public static Vector3 overridePosition;

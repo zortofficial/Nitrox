@@ -1,5 +1,7 @@
-﻿using NitroxClient.MonoBehaviours.DiscordRP;
+﻿using System;
+using NitroxClient.MonoBehaviours.DiscordRP;
 using NitroxClient.Unity.Helper;
+using NitroxModel.Logger;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -8,22 +10,29 @@ namespace NitroxClient.MonoBehaviours.Gui.MainMenu
 {
     public class MainMenuMods : MonoBehaviour
     {
-        private void OnEnable()
+        public void OnEnable()
         {
             SceneManager.sceneLoaded += SceneManager_sceneLoaded;
         }
 
-        private void OnDisable()
+        public void OnDisable()
         {
-            SceneManager.sceneLoaded -= SceneManager_sceneLoaded;
+            SceneManager.sceneLoaded += SceneManager_sceneLoaded;
         }
 
         private void SceneManager_sceneLoaded(Scene scene, LoadSceneMode loadMode)
         {
             if (scene.name == "XMenu")
             {
-                MultiplayerMenuMods();
-                DiscordRPController.Main.InitializeMenu();
+                try
+                {
+                    MultiplayerMenuMods();
+                    DiscordRPController.Main.InitializeMenu();
+                }
+                catch(Exception ex)
+                {
+                    Log.Error(ex, "Could not attach the multiplayer button due to an exception!");
+                }
             }
         }
 

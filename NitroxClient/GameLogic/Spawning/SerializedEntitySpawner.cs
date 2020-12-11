@@ -1,4 +1,5 @@
-﻿using NitroxClient.GameLogic.Helper;
+﻿using System.Collections;
+using NitroxClient.GameLogic.Helper;
 using NitroxClient.GameLogic.ItemDropActions;
 using NitroxClient.GameLogic.Spawning.Metadata;
 using NitroxClient.MonoBehaviours;
@@ -8,14 +9,13 @@ using NitroxModel.DataStructures.GameLogic;
 using NitroxModel.DataStructures.Util;
 using NitroxModel.Logger;
 using NitroxModel_Subnautica.DataStructures;
-using NitroxModel_Subnautica.Helper;
 using UnityEngine;
 
 namespace NitroxClient.GameLogic.Spawning
 {
     public class SerializedEntitySpawner : IEntitySpawner
     {
-        public Optional<GameObject> Spawn(Entity entity, Optional<GameObject> parent, EntityCell cellRoot)
+        public IEnumerator Spawn(TaskResult<Optional<GameObject>> result, Entity entity, Optional<GameObject> parent, EntityCell cellRoot)
         {
             GameObject gameObject = SerializationHelper.GetGameObject(entity.SerializedGameObject);
             gameObject.transform.position = entity.Transform.Position.ToUnity();
@@ -39,7 +39,8 @@ namespace NitroxClient.GameLogic.Spawning
                 metadataProcessor.Value.ProcessMetadata(gameObject, entity.Metadata);
             }
 
-            return Optional.Of(gameObject);
+            result.Set(Optional.Of(gameObject));
+            yield break;
         }
 
         public bool SpawnsOwnChildren()

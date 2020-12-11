@@ -13,10 +13,10 @@ using System;
 using System.Reflection;
 using UnityEngine;
 using static NitroxClient.GameLogic.Helper.TransientLocalObjectManager;
-using NitroxModel_Subnautica.Helper;
 using NitroxModel.DataStructures;
 using NitroxClient.GameLogic.Bases.Spawning;
 using NitroxModel_Subnautica.DataStructures;
+using System.Collections;
 
 namespace NitroxClient.MonoBehaviours
 {
@@ -35,6 +35,8 @@ namespace NitroxClient.MonoBehaviours
         private BuildThrottlingQueue buildEvents;
         private IPacketSender packetSender;
 
+        private bool processingQueue = false;
+
         public void Start()
         {
             main = this;
@@ -49,48 +51,51 @@ namespace NitroxClient.MonoBehaviours
                 return;
             }
 
-            bool queueHadItems = (buildEvents.Count > 0);
+            bool queueHasItems = (buildEvents.Count > 0);
 
-            ProcessBuildEventsUntilFrameBlocked();
-
-            if(queueHadItems && buildEvents.Count == 0 && QueueDrained != null)
+            if (queueHasItems && !processingQueue)
             {
-                QueueDrained(this, new EventArgs());
+                StartCoroutine(ProcessBuildEvents());
+                processingQueue = true;
             }
         }
 
-        private void ProcessBuildEventsUntilFrameBlocked()
+        private IEnumerator ProcessBuildEvents()
         {
-            bool processedFrameBlockingEvent = false;
-            bool isNextEventFrameBlocked = false;
-
-            while (buildEvents.Count > 0 && !isNextEventFrameBlocked)
+            while (buildEvents.Count > 0)
             {
-                BuildEvent nextEvent = buildEvents.Dequeue();
+                BuildEvent currentEvent = buildEvents.Dequeue();
 
                 try
                 {
-                    ActionBuildEvent(nextEvent);
+                    ActionBuildEvent(currentEvent);
                 }
                 catch (Exception ex)
                 {
                     Log.Error("Error processing buildEvent in ThrottledBuilder" + ex);
                 }
 
-                if (nextEvent.RequiresFreshFrame())
+                if (currentEvent.RequiresFreshFrame() || buildEvents.NextEventRequiresFreshFrame())
                 {
-                    processedFrameBlockingEvent = true;
+                    yield return null;
                 }
-
-                isNextEventFrameBlocked = (processedFrameBlockingEvent && buildEvents.NextEventRequiresFreshFrame());
             }
+
+            if (QueueDrained != null)
+            {
+                QueueDrained(this, new EventArgs());
+            }
+
+            processingQueue = false;
+
+            yield return null;
         }
 
-        private void ActionBuildEvent(BuildEvent buildEvent)
+        private IEnumerator ActionBuildEvent(BuildEvent buildEvent)
         {
             if (buildEvent is BasePiecePlacedEvent)
             {
-                PlaceBasePiece((BasePiecePlacedEvent)buildEvent);
+                yield return PlaceBasePiece((BasePiecePlacedEvent)buildEvent);
             }
             else if (buildEvent is ConstructionCompletedEvent)
             {
@@ -108,13 +113,19 @@ namespace NitroxClient.MonoBehaviours
             {
                 DeconstructionCompleted((DeconstructionCompletedEvent)buildEvent);
             }
+
+            yield return null;
         }
 
-        private void PlaceBasePiece(BasePiecePlacedEvent basePiecePlacedBuildEvent)
+        private IEnumerator PlaceBasePiece(BasePiecePlacedEvent basePiecePlacedBuildEvent)
         {
             Log.Info("BuildBasePiece " + basePiecePlacedBuildEvent.BasePiece.Id + " type: " + basePiecePlacedBuildEvent.BasePiece.TechType + " parentId: " + basePiecePlacedBuildEvent.BasePiece.ParentId.OrElse(null));
             BasePiece basePiece = basePiecePlacedBuildEvent.BasePiece;
-            GameObject buildPrefab = CraftData.GetBuildPrefab(basePiece.TechType.ToUnity());
+
+            CoroutineTask<GameObject> spawnedPrefab = CraftData.GetBuildPrefabAsync(basePiece.TechType.ToUnity());
+            yield return spawnedPrefab;
+
+            GameObject buildPrefab = spawnedPrefab.GetResult();
             MultiplayerBuilder.overridePosition = basePiece.ItemPosition.ToUnity();
             MultiplayerBuilder.overrideQuaternion = basePiece.Rotation.ToUnity();
             MultiplayerBuilder.overrideTransform = new GameObject().transform;
@@ -161,6 +172,8 @@ namespace NitroxClient.MonoBehaviours
             MethodInfo startCrafting = typeof(Constructable).GetMethod("Start", BindingFlags.NonPublic | BindingFlags.Instance);
             Validate.NotNull(startCrafting);
             startCrafting.Invoke(constructable, new object[] { });
+
+            yield return null;
         }
 
         private void ConstructionCompleted(ConstructionCompletedEvent constructionCompleted)

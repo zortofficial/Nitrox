@@ -59,13 +59,20 @@ namespace NitroxClient.Debuggers
 
         public SceneDebugger() : base(500, null, KeyCode.S, true, false, false, GUISkinCreationOptions.DERIVEDCOPY)
         {
-            ActiveTab = AddTab("Scenes", RenderTabScenes);
-            AddTab("Hierarchy", RenderTabHierarchy);
-            AddTab("GameObject", RenderTabGameObject);
-            AddTab("MonoBehaviour", RenderTabMonoBehaviour);
+            try
+            {
+                ActiveTab = AddTab("Scenes", RenderTabScenes);
+                AddTab("Hierarchy", RenderTabHierarchy);
+                AddTab("GameObject", RenderTabGameObject);
+                AddTab("MonoBehaviour", RenderTabMonoBehaviour);
 
-            arrowTexture = Resources.Load<Texture2D>("Sprites/Arrow");
-            circleTexture = Resources.Load<Material>("Materials/WorldCursor").GetTexture("_MainTex");
+                arrowTexture = Resources.Load<Texture2D>("Sprites/Arrow");
+                circleTexture = Resources.Load<Material>("Materials/WorldCursor").GetTexture("_MainTex");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Could not initialize the scene debugger");
+            }
         }
 
         public override void OnGUI()

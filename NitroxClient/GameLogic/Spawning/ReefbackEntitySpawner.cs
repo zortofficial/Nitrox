@@ -1,4 +1,5 @@
-﻿using NitroxModel.DataStructures.GameLogic;
+﻿using System.Collections;
+using NitroxModel.DataStructures.GameLogic;
 using NitroxModel.DataStructures.Util;
 using NitroxModel.Helper;
 using UnityEngine;
@@ -14,31 +15,41 @@ namespace NitroxClient.GameLogic.Spawning
             this.defaultSpawner = defaultSpawner;
         }
 
-        public Optional<GameObject> Spawn(Entity entity, Optional<GameObject> parent, EntityCell cellRoot)
+        public IEnumerator Spawn(TaskResult<Optional<GameObject>> result, Entity entity, Optional<GameObject> parent, EntityCell cellRoot)
         {
-            Optional<GameObject> reefback = defaultSpawner.Spawn(entity, parent, cellRoot);
+            TaskResult<Optional<GameObject>> reefbackTaskResult = new TaskResult<Optional<GameObject>>();
+            yield return defaultSpawner.Spawn(reefbackTaskResult, entity, parent, cellRoot);
+
+            Optional<GameObject> reefback = reefbackTaskResult.Get();
             if (!reefback.HasValue)
             {
-                return Optional.Empty;
+                result.Set(Optional.Empty);
+                yield break;
             }
+
             ReefbackLife life = reefback.Value.GetComponent<ReefbackLife>();
             if (life == null)
             {
-                return Optional.Empty;
+                result.Set(Optional.Empty);
+                yield break;
             }
             
             life.initialized = true;
             life.ReflectionCall("SpawnPlants");
             foreach (Entity childEntity in entity.ChildEntities)
             {
-                Optional<GameObject> child = defaultSpawner.Spawn(childEntity, reefback, cellRoot);
+                TaskResult<Optional<GameObject>> childTaskResult = new TaskResult<Optional<GameObject>>();
+                yield return defaultSpawner.Spawn(childTaskResult, childEntity, reefback, cellRoot);
+
+                Optional<GameObject> child = childTaskResult.Get();
+
                 if (child.HasValue)
                 {
                     child.Value.AddComponent<ReefbackCreature>();
                 }
             }
 
-            return Optional.Empty;
+            result.Set(Optional.Empty);
         }
 
         public bool SpawnsOwnChildren()

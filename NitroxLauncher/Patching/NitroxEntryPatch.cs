@@ -18,8 +18,8 @@ namespace NitroxLauncher.Patching
         private const string NITROX_ENTRY_TYPE_NAME = "Main";
         private const string NITROX_ENTRY_METHOD_NAME = "Execute";
 
-        private const string GAME_INPUT_TYPE_NAME = "GameInput";
-        private const string GAME_INPUT_METHOD_NAME = "Awake";
+        private const string INSERTION_CLASS = "PlatformUtils";
+        private const string INSERTION_METHOD_NAME = "Awake";
 
         private const string NITROX_EXECUTE_INSTRUCTION = "System.Void Nitrox.Bootloader.Main::Execute()";
 
@@ -51,8 +51,8 @@ namespace NitroxLauncher.Patching
 
                 MemberRef executeMethodReference = module.Import(executeMethodDefinition);
 
-                TypeDef gameInputType = module.GetTypes().First(x => x.FullName == GAME_INPUT_TYPE_NAME);
-                MethodDef awakeMethod = gameInputType.Methods.First(x => x.Name == GAME_INPUT_METHOD_NAME);
+                TypeDef gameInputType = module.GetTypes().First(x => x.FullName == INSERTION_CLASS);
+                MethodDef awakeMethod = gameInputType.Methods.First(x => x.Name == INSERTION_METHOD_NAME);
 
                 Instruction callNitroxExecuteInstruction = OpCodes.Call.ToInstruction(executeMethodReference);
 
@@ -96,8 +96,8 @@ namespace NitroxLauncher.Patching
 
             using (ModuleDefMD module = ModuleDefMD.Load(assemblyCSharp))
             {
-                TypeDef gameInputType = module.GetTypes().First(x => x.FullName == GAME_INPUT_TYPE_NAME);
-                MethodDef awakeMethod = gameInputType.Methods.First(x => x.Name == GAME_INPUT_METHOD_NAME);
+                TypeDef gameInputType = module.GetTypes().First(x => x.FullName == INSERTION_CLASS);
+                MethodDef awakeMethod = gameInputType.Methods.First(x => x.Name == INSERTION_METHOD_NAME);
 
                 IList<Instruction> methodInstructions = awakeMethod.Body.Instructions;
                 int nitroxExecuteInstructionIndex = FindNitroxExecuteInstructionIndex(methodInstructions);
@@ -138,8 +138,8 @@ namespace NitroxLauncher.Patching
 
             using (ModuleDefMD module = ModuleDefMD.Load(gameInputPath))
             {
-                TypeDef gameInputType = module.GetTypes().First(x => x.FullName == GAME_INPUT_TYPE_NAME);
-                MethodDef awakeMethod = gameInputType.Methods.First(x => x.Name == GAME_INPUT_METHOD_NAME);
+                TypeDef gameInputType = module.GetTypes().First(x => x.FullName == INSERTION_CLASS);
+                MethodDef awakeMethod = gameInputType.Methods.First(x => x.Name == INSERTION_METHOD_NAME);
 
                 return awakeMethod.Body.Instructions.Any(instruction => instruction.Operand?.ToString() == NITROX_EXECUTE_INSTRUCTION);
             }

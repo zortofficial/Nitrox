@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using NitroxClient.Communication.Abstract;
 using NitroxClient.MonoBehaviours;
 using NitroxModel.DataStructures;
@@ -133,16 +134,23 @@ namespace NitroxClient.GameLogic
                     + " NodeIndex: " + fireData.NodeIndex
                     + "]");
             }
-            GameObject gameObject = component.SpawnManual();
-            Fire componentInChildren = gameObject.GetComponentInChildren<Fire>();
-            if (componentInChildren)
-            {
-                componentInChildren.fireSubRoot = subFire.subRoot;
-                NitroxEntity.SetNewId(componentInChildren.gameObject, fireData.FireId);
-            }
+            Action<GameObject> fireSpawnedAction = delegate (GameObject o) { fireSpawned(o, subFire.subRoot, fireData.FireId); };
+
+            component.SpawnManual(fireSpawnedAction);
 
             subFire.ReflectionSet("roomFires", roomFiresDict);
             subFire.ReflectionSet("availableNodes", availableNodes);
+        }
+
+        public void fireSpawned(GameObject gameObject, SubRoot subroot, NitroxId fireId)
+        {
+            Fire componentInChildren = gameObject.GetComponentInChildren<Fire>();
+
+            if (componentInChildren)
+            {
+                componentInChildren.fireSubRoot = subroot;
+                NitroxEntity.SetNewId(componentInChildren.gameObject, fireId);
+            }
         }
     }
 }

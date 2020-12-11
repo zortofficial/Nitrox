@@ -28,7 +28,7 @@ namespace NitroxClient.GameLogic.InitialSync
             waitScreenItem.SetProgress(0.25f);
             yield return null;
 
-            AddStartingItemsToPlayer(packet.FirstTimeConnecting);
+            yield return AddStartingItemsToPlayer(packet.FirstTimeConnecting);
             waitScreenItem.SetProgress(0.5f);
             yield return null;
 
@@ -47,19 +47,29 @@ namespace NitroxClient.GameLogic.InitialSync
             Log.Info($"Received initial sync player GameObject Id: {id}");
         }
 
-        private void AddStartingItemsToPlayer(bool firstTimeConnecting)
+        private IEnumerator AddStartingItemsToPlayer(bool firstTimeConnecting)
         {
             if (firstTimeConnecting)
             {
                 foreach (TechType techType in LootSpawner.main.GetEscapePodStorageTechTypes())
                 {
-                    GameObject gameObject = CraftData.InstantiateFromPrefab(techType, false);
+                    TaskResult<GameObject> spawnedPrefab = new TaskResult<GameObject>();
+                    yield return CraftData.InstantiateFromPrefabAsync(techType, spawnedPrefab, false);
+
+                    GameObject gameObject = spawnedPrefab.Get();
                     Pickupable pickupable = gameObject.GetComponent<Pickupable>();
-                    pickupable = pickupable.Initialize();
+
+                    TaskResult<Pickupable> spawnedPickupable = new TaskResult<Pickupable>();
+                    yield return pickupable.InitializeAsync(spawnedPickupable);
+
+                    pickupable = spawnedPickupable.Get();
+
                     itemContainers.AddItem(pickupable.gameObject, NitroxEntity.GetId(Player.main.transform.gameObject));
                     itemContainers.BroadcastItemAdd(pickupable, Inventory.main.container.tr);
                 }
             }
+
+            yield return null;
         }
 
         private void SetPlayerStats(PlayerStatsData statsData)

@@ -29,10 +29,6 @@
     <Reference Include="Autofac, Version=4.9.4.0, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
       <HintPath>..\packages\Autofac.4.9.4\lib\net45\Autofac.dll</HintPath>
     </Reference>
-    <Reference Include="iTween">
-      <HintPath>$(SubnauticaManaged)\iTween.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
     <Reference Include="LitJson">
       <HintPath>$(SubnauticaManaged)\LitJson.dll</HintPath>
       <Private>false</Private>
